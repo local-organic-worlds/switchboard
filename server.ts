@@ -1,15 +1,25 @@
-const io = require('socket.io')(process.env.PORT || 3000, {
-    cors: {
-      origin: ["http://localhost:7788", "https://local-organic-worlds.github.io"],
-      methods: ["GET", "POST"]
-    }
-  });
+import { Server, Socket } from "socket.io";
+import { createServer } from "http";
+
+const httpServer = createServer();
+const io = new Server(httpServer, {
+  cors: {
+    origin: ["http://localhost:7788", "https://local-organic-worlds.github.io"],
+  }
+});
   
   const cooldowns = new Map();
 
   io.on('connection', (socket) => {
+    const forwarded = socket.handshake.headers['x-forwarded-for'];
+
+    // 1. If it's an array, take the first element. 
+    // 2. If it's a string, use it. 
+    // 3. If it's undefined, fall back to the direct socket address.
+    const rawIP = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+
     // Get the Public IP (handles proxies like Railway/Render)
-    const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0] 
+    const clientIP = rawIP?.split(',')[0].trim() 
                      || socket.handshake.address;
   
     // Automatically join a "World" based on that IP
@@ -37,13 +47,13 @@ const io = require('socket.io')(process.env.PORT || 3000, {
 
   });
 
-  function checkRateLimit(socket) {
+  function checkRateLimit(socket: Socket) {
     let underRateLimit = true
     const now = Date.now();
     const userHistory = cooldowns.get(socket.id) || [];
 
     // Filter out timestamps older than 10 seconds
-    const recentMessages = userHistory.filter(time => now - time < 10000);
+    const recentMessages = userHistory.filter((time: number) => now - time < 10000);
 
     if (recentMessages.length >= 5) {
         // Rate limit triggered

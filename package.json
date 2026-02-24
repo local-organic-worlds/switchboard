@@ -4,9 +4,16 @@
   "description": "Stateless signaling relay for Local Organic Worlds",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "tsx server.ts",
+    "dev": "tsx --watch server.ts"
   },
   "dependencies": {
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "@types/socket.io": "^3.0.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
