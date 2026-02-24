@@ -1,4 +1,11 @@
 {
+  "name": "low-key-switchboard",
+  "version": "1.0.0",
+  "description": "Stateless signaling relay for Local Organic Worlds",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "socket.io": "^4.8.3"
   }
