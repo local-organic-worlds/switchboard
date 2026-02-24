@@ -24,7 +24,7 @@ const io = require('socket.io')(process.env.PORT || 3000, {
     console.log(`🌍 World ${worldID} now has ${occupancy} active keys.`);
   
     socket.on('broadcast-thought', (data) => {
-        if (checkRateLimit(socket.id)) { // only proceed if under rate limit
+        if (checkRateLimit(socket)) { // only proceed if under rate limit
             // Only send the thought to people in the same "World" (same IP)
             io.to(worldID).emit('new-thought', { id: socket.id, ...data });
         }
@@ -37,10 +37,10 @@ const io = require('socket.io')(process.env.PORT || 3000, {
 
   });
 
-  function checkRateLimit(socketId) {
+  function checkRateLimit(socket) {
     let underRateLimit = true
     const now = Date.now();
-    const userHistory = cooldowns.get(socketId) || [];
+    const userHistory = cooldowns.get(socket.id) || [];
 
     // Filter out timestamps older than 10 seconds
     const recentMessages = userHistory.filter(time => now - time < 10000);
@@ -53,7 +53,7 @@ const io = require('socket.io')(process.env.PORT || 3000, {
 
     // Add current timestamp and update map
     recentMessages.push(now);
-    cooldowns.set(socketId, recentMessages);
+    cooldowns.set(socket.id, recentMessages);
 
     return underRateLimit
   }
