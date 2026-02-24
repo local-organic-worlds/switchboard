@@ -7,63 +7,69 @@ const io = new Server(httpServer, {
     origin: ["http://localhost:7788", "https://local-organic-worlds.github.io"],
   }
 });
-  
-  const cooldowns = new Map();
 
-  io.on('connection', (socket) => {
-    const forwarded = socket.handshake.headers['x-forwarded-for'];
+const cooldowns = new Map();
 
-    // 1. If it's an array, take the first element. 
-    // 2. If it's a string, use it. 
-    // 3. If it's undefined, fall back to the direct socket address.
-    const rawIP = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+io.on('connection', (socket) => {
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
 
-    // Get the Public IP (handles proxies like Railway/Render)
-    const clientIP = rawIP?.split(',')[0].trim() 
-                     || socket.handshake.address;
-  
-    // Automatically join a "World" based on that IP
-    const worldID = `world-${clientIP}`;
-    socket.join(worldID);
+  // 1. If it's an array, take the first element. 
+  // 2. If it's a string, use it. 
+  // 3. If it's undefined, fall back to the direct socket address.
+  const rawIP = Array.isArray(forwarded) ? forwarded[0] : forwarded;
 
-    console.log(`📡 New Signal: ${socket.id} | IP: ${clientIP} | Assigned to: ${worldID}`);
-  
-    console.log(`User connected to ${worldID}`);
+  // Get the Public IP (handles proxies like Railway/Render)
+  const clientIP = rawIP?.split(',')[0].trim() 
+                    || socket.handshake.address;
 
-    const occupancy = io.sockets.adapter.rooms.get(worldID)?.size || 0;
-    console.log(`🌍 World ${worldID} now has ${occupancy} active keys.`);
-  
-    socket.on('broadcast-thought', (data) => {
-        if (checkRateLimit(socket)) { // only proceed if under rate limit
-            // Only send the thought to people in the same "World" (same IP)
-            io.to(worldID).emit('new-thought', { id: socket.id, ...data });
-        }
-    });
-  
-    socket.on('disconnect', () => {
-      io.to(worldID).emit('user-left', socket.id);
-      cooldowns.delete(socket.id); // Clean up memory
-    });
+  // Automatically join a "World" based on that IP
+  const worldID = `world-${clientIP}`;
+  socket.join(worldID);
 
+  console.log(`📡 New Signal: ${socket.id} | IP: ${clientIP} | Assigned to: ${worldID}`);
+
+  console.log(`User connected to ${worldID}`);
+
+  const occupancy = io.sockets.adapter.rooms.get(worldID)?.size || 0;
+  console.log(`🌍 World ${worldID} now has ${occupancy} active keys.`);
+
+  socket.on('broadcast-thought', (data) => {
+      if (checkRateLimit(socket)) { // only proceed if under rate limit
+          // Only send the thought to people in the same "World" (same IP)
+          io.to(worldID).emit('new-thought', { id: socket.id, ...data });
+      }
   });
 
-  function checkRateLimit(socket: Socket) {
-    let underRateLimit = true
-    const now = Date.now();
-    const userHistory = cooldowns.get(socket.id) || [];
+  socket.on('disconnect', () => {
+    io.to(worldID).emit('user-left', socket.id);
+    cooldowns.delete(socket.id); // Clean up memory
+  });
 
-    // Filter out timestamps older than 10 seconds
-    const recentMessages = userHistory.filter((time: number) => now - time < 10000);
+});
 
-    if (recentMessages.length >= 5) {
-        // Rate limit triggered
-        socket.emit('error-msg', "Too many thoughts. Slow down and breathe.");
-        underRateLimit = false
-    }
+function checkRateLimit(socket: Socket) {
+  let underRateLimit = true
+  const now = Date.now();
+  const userHistory = cooldowns.get(socket.id) || [];
 
-    // Add current timestamp and update map
-    recentMessages.push(now);
-    cooldowns.set(socket.id, recentMessages);
+  // Filter out timestamps older than 10 seconds
+  const recentMessages = userHistory.filter((time: number) => now - time < 10000);
 
-    return underRateLimit
+  if (recentMessages.length >= 5) {
+      // Rate limit triggered
+      socket.emit('error-msg', "Too many thoughts. Slow down and breathe.");
+      underRateLimit = false
   }
+
+  // Add current timestamp and update map
+  recentMessages.push(now);
+  cooldowns.set(socket.id, recentMessages);
+
+  return underRateLimit
+}
+
+const PORT = process.env.PORT || 3000;
+
+httpServer.listen(PORT, () => {
+console.log(`🚀 Switchboard (TS) live on port ${PORT}`);
+});
