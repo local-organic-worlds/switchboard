@@ -1,5 +1,8 @@
 const io = require('socket.io')(process.env.PORT || 3000, {
-    cors: { origin: "*" }
+    cors: {
+      origin: ["http://localhost:7788", "https://local-organic-worlds.github.io"],
+      methods: ["GET", "POST"]
+    }
   });
   
   io.on('connection', (socket) => {
