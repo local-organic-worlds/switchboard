@@ -8,9 +8,11 @@ const io = new Server(httpServer, {
   }
 });
 
+const crypto = require('crypto');
+
 const cooldowns = new Map();
 
-io.on('connection', (socket) => {
+function getHashedIP(socket: Socket) {
   const forwarded = socket.handshake.headers['x-forwarded-for'];
 
   // 1. If it's an array, take the first element. 
@@ -22,11 +24,22 @@ io.on('connection', (socket) => {
   const clientIP = rawIP?.split(',')[0].trim() 
                     || socket.handshake.address;
 
-  // Automatically join a "World" based on that IP
-  const worldID = `world-${clientIP}`;
+
+  // Create a short, unrecognizable version of the IP
+  const hashedIP = crypto.createHash('md5').update(clientIP).digest('hex').substring(0, 8);
+
+  return hashedIP
+}
+
+io.on('connection', (socket: Socket) => {
+  
+  const hashedIP = getHashedIP(socket)
+
+  // Automatically join a "World" based on hashed IP
+  const worldID = `world-${hashedIP}`;
   socket.join(worldID);
 
-  console.log(`📡 New Signal: ${socket.id} | IP: ${clientIP} | Assigned to: ${worldID}`);
+  console.log(`📡 New Signal: ${socket.id} | Hashed IP: ${hashedIP} | Assigned to: ${worldID}`);
 
   console.log(`User connected to ${worldID}`);
 
