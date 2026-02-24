@@ -13,8 +13,13 @@ const io = require('socket.io')(process.env.PORT || 3000, {
     // Automatically join a "World" based on that IP
     const worldID = `world-${clientIP}`;
     socket.join(worldID);
+
+    console.log(`📡 New Signal: ${socket.id} | IP: ${clientIP} | Assigned to: ${worldID}`);
   
     console.log(`User connected to ${worldID}`);
+
+    const occupancy = io.sockets.adapter.rooms.get(worldID)?.size || 0;
+    console.log(`🌍 World ${worldID} now has ${occupancy} active keys.`);
   
     socket.on('broadcast-thought', (data) => {
       // Only send the thought to people in the same "World" (same IP)
@@ -24,4 +29,5 @@ const io = require('socket.io')(process.env.PORT || 3000, {
     socket.on('disconnect', () => {
       io.to(worldID).emit('user-left', socket.id);
     });
+
   });
