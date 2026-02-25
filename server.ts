@@ -72,7 +72,9 @@ io.on('connection', (socket: Socket) => {
   console.log(`🌍 World ${worldID} now has ${occupancy} active keys.`);
 
   socket.on('broadcast-thought', async (data) => {
-      const isToxic = await ToxicityGuard.check(data.text);
+      const isToxic = false
+      // const isToxic = await ToxicityGuard.check(data.text);
+      // ToxicityGuard not working yet
       if (isToxic) {
         socket.emit('error-msg', "Blocked Toxic Content. Keep it low-key and friendly.");
       }
