@@ -1,6 +1,28 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
 
+class ToxicityGuard {
+    private static classifier: any = null;
+
+    static async getClassifier() {
+      if (!this.classifier) { 
+        const { pipeline } = await import('@huggingface/transformers');
+        this.classifier = await pipeline('text-classification', 'Xenova/toxic-bert');
+      }
+        // This loads a model functionally equivalent to Detoxify
+        // 'Xenova/toxic-bert' is a popular quantized version for JS
+      return this.classifier;
+    }
+
+    static async check(text: string): Promise<boolean> {
+        const pipe = await this.getClassifier();
+        const results = await pipe(text);
+        // Returns an array like [{ label: 'toxic', score: 0.98 }]
+        const toxicResult = results.find((r: any) => r.label === 'toxic');
+        return toxicResult && toxicResult.score > 0.7; // Threshold of 70%
+    }
+}
+
 const httpServer = createServer();
 const io = new Server(httpServer, {
   cors: {
@@ -46,10 +68,19 @@ io.on('connection', (socket: Socket) => {
   const occupancy = io.sockets.adapter.rooms.get(worldID)?.size || 0;
   console.log(`🌍 World ${worldID} now has ${occupancy} active keys.`);
 
-  socket.on('broadcast-thought', (data) => {
-      if (checkRateLimit(socket)) { // only proceed if under rate limit
+  socket.on('broadcast-thought', async (data) => {
+      const isToxic = await ToxicityGuard.check(data.text);
+      if (isToxic) {
+        socket.emit('error-msg', "Blocked Toxic Content. Keep it low-key and friendly.");
+      }
+      else {
+        if (checkRateLimit(socket)) { // only proceed if under rate limit
           // Only send the thought to people in the same "World" (same IP)
           io.to(worldID).emit('new-thought', { id: socket.id, ...data });
+        }
+        else {
+          socket.emit('error-msg', "Too many thoughts. Slow down and breathe.");
+        }
       }
   });
 
@@ -70,7 +101,6 @@ function checkRateLimit(socket: Socket) {
 
   if (recentMessages.length >= 5) {
       // Rate limit triggered
-      socket.emit('error-msg', "Too many thoughts. Slow down and breathe.");
       underRateLimit = false
   }
 

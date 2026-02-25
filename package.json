@@ -8,6 +8,7 @@
     "dev": "tsx --watch server.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "crypto": "^1.0.1",
     "socket.io": "^4.8.3"
   },
