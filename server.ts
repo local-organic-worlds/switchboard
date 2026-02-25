@@ -7,7 +7,10 @@ class ToxicityGuard {
     static async getClassifier() {
       if (!this.classifier) { 
         const { pipeline } = await import('@huggingface/transformers');
-        this.classifier = await pipeline('text-classification', 'Xenova/toxic-bert');
+        this.classifier = await pipeline('text-classification', 'Xenova/toxic-bert', {
+          // Adding this ensures it uses the most stable version
+          revision: 'main' 
+        })
       }
         // This loads a model functionally equivalent to Detoxify
         // 'Xenova/toxic-bert' is a popular quantized version for JS
